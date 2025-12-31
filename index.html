@@ -3,105 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WMS Stock Opname Pro (UX Audio)</title>
+    <title>WMS Pro v9 (Final UX)</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         :root {
-            --primary: #2563eb;
-            --secondary: #475569;
-            --success: #16a34a;
-            --danger: #dc2626;
-            --warning: #ca8a04;
-            --bg: #f8fafc;
+            --primary: #2563eb;     /* Simpan Color */
+            --opname: #16a34a;      /* Opname Color */
+            --data: #ca8a04;        /* Data/Search Color */
+            
+            --bg: #f1f5f9;
             --card: #ffffff;
-            --text: #1e293b;
+            --text: #0f172a;
+            --secondary: #64748b;
             --border: #e2e8f0;
+            --danger: #dc2626;
+            
+            --active-color: var(--primary); /* Dynamic based on Tab */
         }
         
         body.dark-mode {
             --bg: #0f172a;
             --card: #1e293b;
-            --text: #f1f5f9;
+            --text: #f8fafc;
             --border: #334155;
             --secondary: #94a3b8;
         }
 
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 80px; display: flex; flex-direction: column; height: 100vh; overscroll-behavior: none; }
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 80px; display: flex; flex-direction: column; height: 100vh; overscroll-behavior: none; transition: background 0.3s; }
         
         /* HEADER */
-        header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+        header { background: var(--active-color); color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: background 0.3s; }
+        h1 { margin: 0; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; }
         .header-btn { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; padding: 5px; }
 
-        /* FILTERS */
-        .global-filter { background: var(--card); padding: 10px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; z-index: 100; }
-        select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.95rem; }
+        /* FILTER GLOBAL */
+        .global-filter { background: var(--card); padding: 8px 15px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; z-index: 90; }
+        select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-weight: 500; font-size: 0.9rem; }
 
-        /* TABS */
-        .nav-tabs { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-        .nav-item { border: none; background: none; color: var(--secondary); font-size: 0.7rem; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; cursor: pointer; transition: color 0.2s; }
-        .nav-item i { font-size: 1.3rem; margin-bottom: 2px; }
-        .nav-item.active { color: var(--primary); font-weight: 700; }
+        /* SCANNER BAR (Context Aware) */
+        .scanner-bar { background: var(--card); padding: 10px 15px; border-bottom: 3px solid var(--active-color); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.03); transition: border-color 0.3s; }
+        .input-wrapper { position: relative; display: flex; gap: 8px; }
+        .main-input { 
+            width: 100%; padding: 12px 40px 12px 15px; 
+            border: 2px solid var(--border); border-radius: 8px; 
+            font-size: 1.1rem; font-weight: bold; background: var(--bg); color: var(--text);
+            outline: none; transition: all 0.2s;
+        }
+        .main-input:focus { background: var(--card); border-color: var(--active-color); box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
+        .input-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--secondary); }
+        
+        /* VISUAL FEEDBACK */
+        @keyframes flashSuccess { 0% { background-color: rgba(22, 163, 74, 0.3); } 100% { background-color: transparent; } }
+        @keyframes flashError { 0% { background-color: rgba(220, 38, 38, 0.3); } 100% { background-color: transparent; } }
+        .flash-success { animation: flashSuccess 0.5s ease-out; }
+        .flash-error { animation: flashError 0.5s ease-out; }
 
-        /* CONTENT */
+        /* HIGHLIGHT ROW ANIMATION (Data Tab) */
+        @keyframes highlightPulse {
+            0% { background-color: #fef08a; transform: scale(1.02); border-left: 5px solid #ca8a04; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+            50% { background-color: #fef9c3; transform: scale(1); }
+            100% { background-color: var(--card); border-left: 1px solid var(--border); box-shadow: none; }
+        }
+        .highlight-row { animation: highlightPulse 2.5s ease-out; z-index: 10; position: relative; }
+
+        /* CONTENT AREA */
         .tab-content { flex: 1; overflow-y: auto; padding: 15px; display: none; }
         .tab-content.active { display: block; }
 
-        /* CARDS & UI */
-        .card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        /* LIST ITEMS */
+        .list-container { display: flex; flex-direction: column; gap: 8px; }
+        .item-card { 
+            background: var(--card); padding: 12px; border-radius: 8px; 
+            border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; 
+            cursor: pointer; transition: transform 0.1s;
+        }
+        .item-card:active { transform: scale(0.99); background: var(--bg); }
+        .item-card.selected { border-left: 5px solid var(--primary); background: #eff6ff; }
         
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 0.95rem; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.98); }
-        .btn-sm { padding: 6px 12px; font-size: 0.85rem; width: auto; display: inline-flex; margin: 0; align-items: center; gap: 5px; cursor: pointer; border-radius: 6px; border: none; }
+        .part-code { font-weight: 700; font-size: 1rem; color: var(--text); display: block; }
+        .part-desc { font-size: 0.8rem; color: var(--secondary); margin-top: 2px; display: block; line-height: 1.3; }
         
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-warning { background: var(--warning); color: white; }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        /* BADGES */
+        .loc-badge { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px; font-weight: 600; }
+        .qty-badge { font-weight: bold; padding: 4px 10px; border-radius: 6px; font-size: 0.95rem; min-width: 30px; text-align: center; }
+        .qty-match { background: #dcfce7; color: #166534; }
+        .qty-diff { background: #fee2e2; color: #991b1b; }
+        .qty-zero { background: #f1f5f9; color: #64748b; }
 
-        .form-group { margin-bottom: 12px; }
-        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; background: var(--bg); color: var(--text); font-size: 1rem; }
-        
-        /* TAGS & LISTS */
-        .loc-tag { display: inline-block; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-right: 4px; font-weight: 600; }
-        .item-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding: 12px 5px; cursor: pointer; }
-        .item-row:active { background: rgba(0,0,0,0.05); }
+        /* SEGMENTED TABS (Opname) */
+        .segment-control { display: flex; width: 100%; background: var(--card); border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+        .segment-btn { flex: 1; text-align: center; padding: 12px 5px; border-bottom: 3px solid transparent; color: var(--secondary); font-weight: 600; font-size: 0.85rem; cursor: pointer; text-transform: uppercase; }
+        .segment-btn.active { border-bottom-color: var(--opname); color: var(--opname); background: #f0fdf4; }
 
-        /* SIMPAN LIST STYLE */
-        .simpan-item { background: var(--card); padding: 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .simpan-item.active-select { border-left: 5px solid var(--primary); background: #eff6ff; }
-
-        /* ANIMATIONS */
+        /* STATUS PANEL */
+        .status-panel { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: none; animation: slideDown 0.2s; }
         @keyframes slideDown { from {opacity:0; transform:translateY(-10px);} to {opacity:1; transform:translateY(0);} }
-        .cam-active { background-color: var(--danger) !important; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% {box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);} 70% {box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);} 100% {box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);} }
+
+        /* NAV TABS */
+        .nav-tabs { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); border-top: 1px solid var(--border); display: flex; height: 60px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .nav-item { flex: 1; border: none; background: none; color: var(--secondary); font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: color 0.3s; }
+        .nav-item.active { color: var(--active-color); font-weight: 700; }
+        .nav-item i { font-size: 1.4rem; }
 
         /* MODALS */
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
-        .modal { background: var(--card); padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; color: var(--text); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUp { from {transform: translateY(20px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal { background: var(--card); width: 90%; max-width: 400px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; font-size: 1rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--opname); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-sm { width: auto; padding: 5px 10px; font-size: 0.85rem; }
 
-        /* SCANNER WRAPPER */
-        #reader-wrapper { display: none; padding: 10px; background: #000; border-radius: 0 0 15px 15px; margin-bottom: 10px; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; background: black; }
-
-        /* QUICK FILTERS */
-        .quick-filters { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
-        .filter-chip { flex: 0 0 auto; padding: 8px 16px; border-radius: 20px; background: var(--card); border: 1px solid var(--border); font-size: 0.85rem; cursor: pointer; font-weight: 600; color: var(--secondary); transition: all 0.2s; }
-        .filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-        /* STATUS BADGES */
-        .qty-badge { font-weight: bold; padding: 4px 8px; border-radius: 6px; font-size: 0.9rem; }
-        .qty-match { color: #166534; background: #dcfce7; }
-        .qty-diff { color: #991b1b; background: #fee2e2; }
-        .qty-zero { color: #475569; background: #f1f5f9; }
-
-        /* TOAST */
-        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 12px; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 3000; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-weight: 500; }
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 12px; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 3000; border-radius: 8px; font-weight: 500; }
         #toast.show { visibility: visible; animation: fadein 0.3s, fadeout 0.3s 2.5s; }
         @keyframes fadein { from {bottom: 60px; opacity: 0;} to {bottom: 80px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 80px; opacity: 1;} to {bottom: 60px; opacity: 0;} }
@@ -110,211 +126,137 @@
 <body>
 
 <header>
-    <h1><i class="fas fa-boxes"></i> WMS Stock Opname</h1>
+    <h1>WMS Pro v9</h1>
     <button class="header-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
 </header>
 
 <div class="global-filter">
     <select id="filterLoc" onchange="handleFilterChange()">
-        <option value="">-- Pilih Tipe Lokasi --</option>
+        <option value="">-- Pilih Lokasi --</option>
     </select>
     <select id="filterTech" onchange="handleFilterChange()" style="display:none;">
         <option value="">-- Teknisi --</option>
     </select>
 </div>
 
-<div id="tab-simpan" class="tab-content active">
-    <div style="position:sticky; top:0; background:var(--bg); z-index:10; padding-bottom:5px;">
-        <div id="reader-wrapper">
-            <div id="reader"></div>
+<div class="scanner-bar">
+    <div class="input-wrapper">
+        <input type="text" id="mainInput" class="main-input" placeholder="Scan Part / Box..." inputmode="none" autocomplete="off" onkeydown="handleInputKeyDown(event)">
+        <i class="fas fa-barcode input-icon"></i>
+    </div>
+    <div style="display:flex; justify-content:space-between; margin-top:5px; align-items:center;">
+        <small style="color:var(--secondary); font-weight:500; height:20px;" id="scanStatusText">Siap Scan...</small>
+        <div style="font-size:0.8rem;">
+            <label><input type="checkbox" id="chkManualType" onchange="toggleKeyboardMode()"> Ketik</label>
         </div>
+    </div>
+</div>
 
-        <div class="card" style="margin-bottom:10px; padding:10px; display:flex; gap:10px; align-items:center;">
-            <div style="flex:1;">
-                <input type="text" id="simpanSearch" placeholder="Scan / Ketik Part..." onkeyup="filterSimpanList()" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
-            </div>
-            <button id="btnCamToggle" class="btn-sm btn-primary" onclick="toggleContinuousScan()" style="height:45px; width:45px; border-radius:10px; display:flex; justify-content:center; align-items:center; font-size:1.3rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                <i class="fas fa-camera"></i>
-            </button>
+<div id="tab-simpan" class="tab-content active">
+    <div id="simpanStatusPanel" class="status-panel">
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+            <b style="font-size:1.1rem; color:var(--primary);" id="activePartNo">-</b>
+            <button class="btn-sm btn-danger" onclick="clearActivePart()"><i class="fas fa-times"></i></button>
         </div>
+        <div id="activePartDesc" style="font-size:0.9rem; color:var(--secondary); margin-bottom:10px;">-</div>
         
-        <div id="activePartPanel" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; padding:12px; border-radius:10px; margin-bottom:10px; animation: slideDown 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <div>
-                    <div id="activePartNo" style="font-size:1.1rem; font-weight:bold; color:#1e40af;">-</div>
-                    <div id="activePartDesc" style="font-size:0.85rem; color:#1e3a8a; margin-top:2px;">-</div>
-                </div>
-                <button class="btn-sm btn-outline" onclick="clearActivePart()" style="border:none; color:#991b1b;"><i class="fas fa-times"></i> Batal</button>
+        <div style="background:var(--card); padding:10px; border-radius:6px; border:1px dashed var(--primary); display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <span style="font-size:0.8rem; font-weight:bold; color:var(--primary);">QTY:</span>
+                <input type="number" id="simpanQty" value="1" min="1" style="width:60px; text-align:center; border:1px solid var(--border); border-radius:4px; font-weight:bold; font-size:1rem;">
             </div>
-            
-            <hr style="border:0; border-top:1px dashed #bfdbfe; margin:10px 0;">
-            
-            <div style="display:flex; gap:10px; align-items:center; justify-content:space-between;">
-                <div style="display:flex; align-items:center; gap:5px;">
-                    <span style="font-size:0.9rem; font-weight:600; color:#1e40af;">Qty:</span>
-                    <input type="number" id="simpanQty" value="1" min="1" style="width:70px; text-align:center; padding:8px; border-radius:6px; border:1px solid #3b82f6; font-weight:bold; font-size:1.1rem;">
-                </div>
-                <div style="font-size:0.9rem; color:#059669; font-weight:600; animation: pulse 2s infinite;">
-                    <i class="fas fa-arrow-right"></i> SCAN BOX TUJUAN
-                </div>
+            <div style="font-size:0.9rem; font-weight:bold; color:#16a34a; animation: pulse 2s infinite;">
+                <i class="fas fa-arrow-right"></i> SCAN BOX TUJUAN
             </div>
         </div>
     </div>
 
-    <div id="simpanListArea" style="padding-bottom:20px;"></div>
+    <div id="simpanList" class="list-container"></div>
 </div>
 
 <div id="tab-opname" class="tab-content">
-    <div id="activeBoxIndicator" style="background: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 8px; margin-bottom: 15px; display:none; justify-content: space-between; align-items: center; border: 1px solid #bae6fd; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <div><i class="fas fa-box-open"></i> Filter Box: <b id="activeBoxName"></b></div>
-        <button class="btn-sm btn-danger" onclick="clearOpnameBoxFilter()"><i class="fas fa-times"></i> Reset</button>
-    </div>
-
-    <div id="opnameSearchArea" class="card" style="padding:10px;">
-        <div style="font-size:0.75rem; font-weight:700; color:var(--secondary); margin-bottom:5px; text-transform:uppercase;">Filter per Box (Opsional)</div>
-        <div style="display:flex; gap:10px;">
-            <input type="text" id="opnameInputBox" placeholder="Scan Box..." onkeypress="handleOpnameBoxEnter(event)" style="flex:1;">
-            <button class="btn-sm btn-primary" onclick="manualScanBoxTrigger()"><i class="fas fa-qrcode"></i></button>
+    <div id="activeBoxPanel" class="status-panel" style="background:#f0fdf4; border-color:#86efac; display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><i class="fas fa-box-open"></i> Filter Box: <b id="activeBoxName"></b></div>
+            <button class="btn-sm btn-danger" onclick="clearOpnameBoxFilter()">Reset</button>
         </div>
     </div>
 
-    <div class="quick-filters">
-        <button class="filter-chip active" onclick="setOpnameFilter('all', this)">SEMUA</button>
-        <button class="filter-chip" onclick="setOpnameFilter('diff', this)">SELISIH</button>
-        <button class="filter-chip" onclick="setOpnameFilter('zero', this)">BELUM SCAN</button>
+    <div class="segment-control">
+        <div class="segment-btn active" onclick="setOpnameFilter('all', this)">SEMUA</div>
+        <div class="segment-btn" onclick="setOpnameFilter('diff', this)">SELISIH</div>
+        <div class="segment-btn" onclick="setOpnameFilter('zero', this)">BELUM</div>
     </div>
 
-    <div id="opnameListResult"></div>
-    <div id="loadingMore" style="text-align:center; padding:15px; display:none; color:var(--secondary);"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>
+    <div id="opnameList" class="list-container"></div>
+    <div id="opnameLoading" style="text-align:center; padding:15px; display:none; color:var(--secondary);">Load more...</div>
 </div>
 
-<div id="tab-cari" class="tab-content">
-    <div class="form-group">
-        <input type="text" id="cariInput" placeholder="Cari Nama Part / Nomor Part..." onkeyup="handleCariRender()">
+<div id="tab-data" class="tab-content">
+    <div class="item-card" style="margin-bottom:10px; background:#fefce8; border-color:#fef08a; cursor:default;">
+        <div style="font-size:0.85rem; color:#854d0e;">
+            <i class="fas fa-info-circle"></i> <b>Tips:</b> Scan part di tab ini untuk langsung mencari dan scroll otomatis ke data tersebut.
+        </div>
     </div>
-    <div id="cariResultList"></div>
+    
+    <input type="text" id="cariInput" placeholder="Filter Teks..." onkeyup="renderDataList(true)" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:6px; margin-bottom:10px;">
+
+    <div id="dataList" class="list-container"></div>
+    <div id="dataLoading" style="text-align:center; padding:15px; display:none; color:var(--secondary);">Load more...</div>
 </div>
 
 <div class="overlay" id="actionModal">
     <div class="modal">
-        <div style="text-align:center; margin-bottom:15px;">
-            <i class="fas fa-question-circle" style="font-size:3rem; color:var(--warning);"></i>
+        <h3 style="text-align:center;">Konfirmasi Simpan</h3>
+        <p style="text-align:center; color:var(--secondary);">Part ini sudah ada di: <b id="modalExistingLocs"></b></p>
+        <div style="background:var(--bg); padding:15px; text-align:center; border-radius:8px; margin:10px 0;">
+            Simpan <b><span id="modalQty" style="font-size:1.2rem;"></span> pcs</b> ke <b><span id="modalTargetBox" style="color:var(--primary);"></span></b>?
         </div>
-        <h3 style="text-align:center; margin:0 0 10px 0;">Konfirmasi Penyimpanan</h3>
-        <p style="text-align:center; color:var(--secondary); font-size:0.9rem; margin-bottom:15px;">
-            Part ini sudah tercatat di lokasi: <br><b id="modalExistingLocs" style="color:var(--text);"></b>
-        </p>
-        <div style="background:var(--bg); padding:10px; border-radius:8px; text-align:center; margin-bottom:20px; border:1px solid var(--border);">
-            Simpan <b><span id="modalQty" style="font-size:1.2rem;"></span> pcs</b> ke Box <b><span id="modalTargetBox" style="color:var(--primary);"></span></b>?
+        <button class="btn btn-success" onclick="executeSave('add')">SPLIT / TAMBAH (Stok Total Bertambah)</button>
+        <button class="btn btn-warning" onclick="toggleMoveOption()">PINDAHKAN (Stok Total Tetap)</button>
+        <div id="moveSourceDiv" style="display:none; margin-top:10px; padding:10px; background:var(--bg); border:1px solid var(--border);">
+            <small>Ambil dari:</small>
+            <select id="moveSourceSelect" style="margin-bottom:5px; width:100%; padding:8px;"></select>
+            <button class="btn btn-primary btn-sm" onclick="executeSave('move')">Konfirmasi Pindah</button>
         </div>
-        
-        <button class="btn btn-success" onclick="executeSave('add')">
-            <div style="text-align:left; width:100%; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-plus-circle" style="font-size:1.5rem;"></i>
-                <div>
-                    <div>SPLIT / TAMBAH</div>
-                    <small style="font-weight:normal; opacity:0.9;">Stok Total Bertambah</small>
-                </div>
-            </div>
-        </button>
-
-        <div style="margin-top:10px;">
-            <button class="btn btn-warning" onclick="document.getElementById('moveSourceDiv').style.display='block'; this.style.display='none';">
-                <div style="text-align:left; width:100%; display:flex; align-items:center; gap:10px;">
-                    <i class="fas fa-exchange-alt" style="font-size:1.5rem;"></i>
-                    <div>
-                        <div>PINDAHKAN (MOVE)</div>
-                        <small style="font-weight:normal; opacity:0.9;">Stok Total TETAP</small>
-                    </div>
-                </div>
-            </button>
-            <div id="moveSourceDiv" style="display:none; margin-top:5px; padding:15px; background:var(--bg); border:1px solid var(--border); border-radius:8px; animation:slideDown 0.2s;">
-                <label style="font-weight:bold; font-size:0.85rem;">Ambil stok dari:</label>
-                <select id="moveSourceSelect" style="margin:5px 0 10px 0;"></select>
-                <button class="btn btn-primary" onclick="executeSave('move')">Konfirmasi Pindah</button>
-            </div>
-        </div>
-        
-        <button class="btn btn-outline" style="margin-top:15px;" onclick="closeActionModal()">Batal</button>
-    </div>
-</div>
-
-<div class="overlay" id="confirmNewModal">
-    <div class="modal">
-        <div style="text-align:center;">
-            <i class="fas fa-exclamation-triangle" style="font-size:3rem; color:var(--warning);"></i>
-            <h3>Part Tidak Dikenal</h3>
-            <p>Kode <b id="newPartCodeDisplay"></b> tidak ditemukan di database lokasi ini.</p>
-            <p>Apakah ingin membuat data Part Baru?</p>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="btn btn-outline" onclick="closeNewPartModal()">Batal</button>
-                <button class="btn btn-primary" onclick="confirmCreateNewPart()">Buat Baru</button>
-            </div>
-        </div>
+        <button class="btn btn-outline" onclick="closeActionModal()">Batal</button>
     </div>
 </div>
 
 <div class="overlay" id="editModal">
     <div class="modal">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
-            <h3 style="margin:0;">Koreksi Manual</h3>
-            <button onclick="document.getElementById('editModal').style.display='none'" style="background:none; border:none; font-size:1.2rem;"><i class="fas fa-times"></i></button>
+        <div style="display:flex; justify-content:space-between;">
+            <h3>Edit Manual</h3>
+            <button onclick="document.getElementById('editModal').style.display='none'" style="border:none; background:none; font-size:1.2rem;"><i class="fas fa-times"></i></button>
         </div>
-        
-        <div style="margin-bottom:15px;">
-            <div id="editPartTitle" style="font-weight:bold; color:var(--primary); font-size:1.1rem;"></div>
-            <div id="editDescTitle" style="font-size:0.85rem; color:var(--secondary);"></div>
-        </div>
-
-        <div id="editLocsList" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
-        
-        <div style="background:var(--bg); padding:10px; border-radius:8px; border:1px dashed var(--border);">
-            <label style="font-size:0.8rem; font-weight:bold;">Tambah Lokasi Manual:</label>
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <input type="text" id="editNewBox" placeholder="Box (cth: A1)" style="flex:1;">
-                <input type="number" id="editNewQty" placeholder="Qty" style="width:70px;">
-                <button class="btn-sm btn-primary" onclick="addManualLoc()"><i class="fas fa-plus"></i></button>
+        <h4 id="editPartTitle" style="color:var(--primary); margin:0;"></h4>
+        <div id="editLocsList" style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;"></div>
+        <div style="margin-top:15px; background:var(--bg); padding:10px; border-radius:6px;">
+            <small>Tambah Lokasi:</small>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="editNewBox" placeholder="Box" style="flex:1; padding:8px; border:1px solid var(--border); border-radius:4px;">
+                <input type="number" id="editNewQty" placeholder="Qty" style="width:60px; padding:8px; border:1px solid var(--border); border-radius:4px;">
+                <button class="btn-primary" style="width:auto; padding:8px 12px; margin:0;" onclick="addManualLoc()"><i class="fas fa-plus"></i></button>
             </div>
         </div>
-        
-        <div style="margin-top:20px; display:flex; gap:10px;">
-            <button class="btn btn-outline" onclick="document.getElementById('editModal').style.display='none'">Batal</button>
-            <button class="btn btn-success" onclick="saveManualEdit()">Simpan Perubahan</button>
-        </div>
+        <button class="btn btn-success" onclick="saveManualEdit()">Simpan</button>
     </div>
 </div>
 
 <div class="overlay" id="menuModal" onclick="if(event.target===this) toggleMenu()">
     <div class="modal">
-        <h2>Menu Pengaturan</h2>
-        
-        <div style="margin-bottom:15px; border:1px solid var(--border); padding:15px; border-radius:8px; background:var(--bg);">
-            <label style="font-weight:bold; font-size:0.9rem; display:flex; justify-content:space-between;">
-                <span>Jeda Scan Kamera</span>
-                <span id="delayLabel" style="color:var(--primary);">3 Detik</span>
-            </label>
-            <input type="range" id="scanDelayRange" min="1" max="10" value="3" style="width:100%; margin-top:10px;" oninput="updateDelayLabel(this.value)">
-            <small style="color:var(--secondary); font-size:0.75rem;">Mengatur waktu tunggu antar scan agar tidak dobel.</small>
-        </div>
-
-        <button class="btn btn-outline" onclick="toggleDarkMode()"><i class="fas fa-moon"></i> Ganti Tema (Gelap/Terang)</button>
-        <hr style="margin:15px 0; border:0; border-top:1px solid var(--border);">
-        
-        <button class="btn btn-success" onclick="document.getElementById('fileInput').click()"><i class="fas fa-file-excel"></i> Import Data Excel</button>
+        <h2>Menu</h2>
+        <button class="btn btn-outline" onclick="toggleDarkMode()">Ganti Tema</button>
+        <hr>
+        <button class="btn btn-success" onclick="document.getElementById('fileInput').click()">Import Excel</button>
         <input type="file" id="fileInput" hidden accept=".xlsx,.csv" onchange="handleImport(this)">
-        
-        <button class="btn btn-primary" onclick="exportData()"><i class="fas fa-file-export"></i> Export Data Excel</button>
-        
-        <hr style="margin:15px 0; border:0; border-top:1px solid var(--border);">
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-warning" onclick="backupJson()"><i class="fas fa-download"></i> Backup JSON</button>
-            <button class="btn btn-warning" onclick="document.getElementById('jsonInput').click()"><i class="fas fa-upload"></i> Restore JSON</button>
-            <input type="file" id="jsonInput" hidden accept=".json" onchange="restoreJson(this)">
-        </div>
-
-        <hr style="margin:15px 0; border:0; border-top:1px solid var(--border);">
-        <button class="btn btn-danger" onclick="clearData()"><i class="fas fa-trash-alt"></i> Hapus Semua Data</button>
-        <button class="btn btn-outline" style="margin-top:10px;" onclick="toggleMenu()">Tutup</button>
+        <button class="btn btn-primary" onclick="exportData()">Export Excel</button>
+        <hr>
+        <button class="btn btn-warning" onclick="backupJson()">Backup JSON</button>
+        <button class="btn btn-warning" onclick="document.getElementById('jsonInput').click()">Restore JSON</button>
+        <input type="file" id="jsonInput" hidden accept=".json" onchange="restoreJson(this)">
+        <hr>
+        <button class="btn btn-danger" onclick="clearData()">Reset Database</button>
     </div>
 </div>
 
@@ -322,44 +264,60 @@
 
 <div class="nav-tabs">
     <button class="nav-item active" onclick="switchTab('simpan')">
-        <i class="fas fa-dolly-flatbed"></i> SIMPAN
+        <i class="fas fa-dolly"></i> SIMPAN
     </button>
     <button class="nav-item" onclick="switchTab('opname')">
-        <i class="fas fa-tasks"></i> OPNAME
+        <i class="fas fa-clipboard-check"></i> OPNAME
     </button>
-    <button class="nav-item" onclick="switchTab('cari')">
-        <i class="fas fa-search"></i> CARI
+    <button class="nav-item" onclick="switchTab('data')">
+        <i class="fas fa-search"></i> DATA
     </button>
 </div>
 
 <script>
-    // --- AUDIO SYSTEM (UX) ---
+    // --- AUDIO & FEEDBACK ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playBeep(type = 'success') {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        if (type === 'success') {
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    
+    function feedback(type) {
+        const body = document.body;
+        if(type === 'success') {
+            body.classList.add('flash-success');
+            setTimeout(() => body.classList.remove('flash-success'), 500);
+            playTone(800, 'sine', 0.1);
         } else if (type === 'error') {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.3);
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            body.classList.add('flash-error');
+            setTimeout(() => body.classList.remove('flash-error'), 500);
+            playTone(150, 'sawtooth', 0.3);
+        } else if (type === 'scan') {
+            playTone(1200, 'sine', 0.05);
         }
     }
 
+    function playTone(freq, type, duration) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    let statusTimeout;
+    function setStatus(msg) {
+        const el = document.getElementById('scanStatusText');
+        el.innerText = msg;
+        clearTimeout(statusTimeout);
+        statusTimeout = setTimeout(() => {
+            el.innerText = "Siap Scan...";
+        }, 4000); // 4 Detik hilang
+    }
+
     // --- DB CONFIG ---
-    const DB_NAME = 'WMS_Stock_Pro_v7';
+    const DB_NAME = 'WMS_Stock_v9';
     let db = null;
     let localItems = [];
     let filteredItems = [];
@@ -367,50 +325,35 @@
     // --- STATE ---
     let currentTab = 'simpan';
     let opnameFilter = 'all'; 
-    let activeBoxFilter = null; 
+    let activeBoxFilter = null;
     let renderLimit = 50;
     
-    // --- SCANNER ---
-    let scanner = null;
-    let scanTarget = ''; 
     let tempPart = null; 
     let editId = null;
-    let pendingNewCode = ''; // For custom modal
-
-    // --- CONTINUOUS SCAN ---
-    let scanDelay = 3000;
-    let lastScanTime = 0;
-    let isContinuous = false;
-    let simpanRenderLimit = 50;
 
     // --- INIT ---
     window.onload = async () => {
         await initDB();
         if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
-
-        const savedDelay = localStorage.getItem('scanDelay');
-        if(savedDelay) {
-            scanDelay = parseInt(savedDelay) * 1000;
-            const slider = document.getElementById('scanDelayRange');
-            if(slider) {
-                slider.value = savedDelay;
-                document.getElementById('delayLabel').innerText = savedDelay + " Detik";
-            }
-        }
-
-        // Infinite Scroll Listeners
-        const opTab = document.getElementById('tab-opname');
-        opTab.addEventListener('scroll', () => {
-            if(opTab.scrollTop + opTab.clientHeight >= opTab.scrollHeight - 100) {
-                renderLimit += 50; handleOpnameRender();
+        
+        // Focus Trap
+        document.getElementById('mainInput').focus();
+        document.addEventListener('click', (e) => {
+            if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT' && !e.target.closest('.modal')) {
+                document.getElementById('mainInput').focus();
             }
         });
-        const simpanTab = document.getElementById('tab-simpan');
-        simpanTab.addEventListener('scroll', () => {
-            if(simpanTab.scrollTop + simpanTab.clientHeight >= simpanTab.scrollHeight - 100) {
-                simpanRenderLimit += 50; renderSimpanList(false);
-            }
-        });
+
+        // Infinite Scroll
+        const setupScroll = (id, callback) => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('scroll', () => {
+                if(el.scrollTop + el.clientHeight >= el.scrollHeight - 50) callback();
+            });
+        };
+        setupScroll('tab-opname', () => { renderLimit += 50; handleOpnameRender(); });
+        setupScroll('tab-simpan', () => { renderLimit += 50; renderSimpanList(false); });
+        setupScroll('tab-data', () => { renderLimit += 50; renderDataList(false); });
     };
 
     function initDB() {
@@ -422,23 +365,20 @@
     }
 
     async function loadData() {
-        return new Promise(resolve => {
-            const tx = db.transaction('items', 'readonly');
-            tx.objectStore('items').getAll().onsuccess = e => {
-                localItems = e.target.result || [];
-                localItems.forEach(i => { if(!i.locations) i.locations = {}; });
-                localItems.sort((a,b) => a.partNo.localeCompare(b.partNo));
-                populateFilters();
-                resolve();
-            };
-        });
+        const tx = db.transaction('items', 'readonly');
+        tx.objectStore('items').getAll().onsuccess = e => {
+            localItems = e.target.result || [];
+            localItems.forEach(i => { if(!i.locations) i.locations = {}; });
+            localItems.sort((a,b) => a.partNo.localeCompare(b.partNo));
+            populateFilters();
+        };
     }
 
-    // --- LOGIC ---
+    // --- FILTERS ---
     function populateFilters() {
         const locs = [...new Set(localItems.map(i => i.locType))].filter(Boolean).sort();
         const selLoc = document.getElementById('filterLoc');
-        selLoc.innerHTML = '<option value="">-- Pilih Tipe Lokasi --</option>';
+        selLoc.innerHTML = '<option value="">-- Pilih Lokasi --</option>';
         locs.forEach(l => selLoc.innerHTML += `<option value="${l}">${l}</option>`);
 
         const techs = [...new Set(localItems.map(i => i.techName))].filter(Boolean).sort();
@@ -452,209 +392,295 @@
         const tech = document.getElementById('filterTech').value;
         document.getElementById('filterTech').style.display = loc.toUpperCase().includes('TEKNISI') ? 'block' : 'none';
 
-        if (!loc) {
-            filteredItems = [];
-        } else {
-            filteredItems = localItems.filter(i => {
-                let m = i.locType === loc;
-                if(m && loc.toUpperCase().includes('TEKNISI') && tech) m = i.techName === tech;
-                return m;
-            });
-        }
+        if (!loc) filteredItems = [];
+        else filteredItems = localItems.filter(i => {
+            let m = i.locType === loc;
+            if(m && loc.toUpperCase().includes('TEKNISI') && tech) m = i.techName === tech;
+            return m;
+        });
+
+        // Reset All
         clearActivePart();
         clearOpnameBoxFilter();
         handleOpnameRender();
-        renderSimpanList(true); 
+        renderSimpanList(true);
+        renderDataList(true);
+        document.getElementById('mainInput').focus();
+    }
+
+    // --- MAIN SCANNER LOGIC ---
+    function handleInputKeyDown(e) {
+        if(e.key === 'Enter') {
+            const val = e.target.value.trim().toUpperCase();
+            e.target.value = '';
+            if(val) processScan(val);
+        }
+    }
+
+    function toggleKeyboardMode() {
+        const chk = document.getElementById('chkManualType');
+        const input = document.getElementById('mainInput');
+        if(chk.checked) {
+            input.setAttribute('inputmode', 'text');
+            input.placeholder = "Ketik Manual...";
+        } else {
+            input.setAttribute('inputmode', 'none');
+            input.placeholder = "Scan Part / Box...";
+        }
+        input.focus();
+    }
+
+    function processScan(code) {
+        const item = filteredItems.find(i => i.partNo.toUpperCase() === code);
+        
+        // 1. Jika itu PART
+        if (item) {
+            feedback('scan');
+            if (currentTab === 'simpan') {
+                selectPartSimpan(item);
+                setStatus(`Part Terpilih: ${item.partNo}`);
+            } else if (currentTab === 'opname') {
+                openEditModal(item.id);
+                setStatus(`Edit Part: ${item.partNo}`);
+            } else if (currentTab === 'data') {
+                // FEATURE: JUMP TO ITEM
+                jumpToItem(item.partNo);
+                setStatus(`Jump: ${item.partNo}`);
+            }
+            return;
+        }
+
+        // 2. Jika bukan Part (Asumsi Box / Part Baru)
+        if (currentTab === 'simpan') {
+            if (tempPart) {
+                processSimpanBox(code); // Simpan ke Box
+            } else {
+                if(confirm(`Kode "${code}" tidak dikenal. Buat Part Baru?`)) {
+                    const newItem = createNewItem(code);
+                    selectPartSimpan(newItem);
+                } else {
+                    feedback('error');
+                }
+            }
+        } else if (currentTab === 'opname') {
+            feedback('scan');
+            setOpnameBoxFilter(code);
+            setStatus(`Filter Box: ${code}`);
+        } else if (currentTab === 'data') {
+            feedback('error');
+            setStatus("Item tidak ditemukan.");
+        }
     }
 
     // --- TAB 1: SIMPAN ---
     function renderSimpanList(reset = true) {
-        if(reset) simpanRenderLimit = 50;
-        const q = document.getElementById('simpanSearch').value.toLowerCase();
-        const container = document.getElementById('simpanListArea');
+        if(reset) renderLimit = 50;
+        const container = document.getElementById('simpanList');
         if(reset) container.innerHTML = '';
-
+        
         if(filteredItems.length === 0) {
-            container.innerHTML = '<div style="padding:40px; text-align:center; color:#94a3b8; font-style:italic;">Pilih Lokasi & Teknisi di atas untuk memulai.</div>';
-            return;
+            container.innerHTML = '<div style="padding:20px; text-align:center; color:#999">Pilih Lokasi Dulu</div>'; return;
         }
 
-        const dataset = filteredItems.filter(i => 
-            i.partNo.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)
-        ).slice(0, simpanRenderLimit);
-
-        if(dataset.length === 0) {
-            if(reset) container.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">Part tidak ditemukan.</div>';
-            return;
-        }
-
-        dataset.forEach(i => {
+        const show = filteredItems.slice(0, renderLimit);
+        show.forEach(i => {
             const isActive = tempPart && tempPart.id === i.id;
-            const locTags = Object.entries(i.locations).map(([k,v]) => `<span class="loc-tag">${k}</span>`).join('');
+            const locTags = Object.entries(i.locations).map(([k,v])=>`<span class="loc-badge">${k}</span>`).join('');
             const div = document.createElement('div');
-            div.className = `simpan-item ${isActive ? 'active-select' : ''}`;
+            div.className = `item-card ${isActive ? 'selected' : ''}`;
             div.id = `simpan-row-${i.id}`;
-            div.onclick = () => selectPartManual(i);
+            div.onclick = () => selectPartSimpan(i);
             div.innerHTML = `
-                <div style="flex:1;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <b style="font-size:1rem; color:var(--text);">${i.partNo}</b>
-                        <div>${locTags}</div>
-                    </div>
-                    <div style="font-size:0.8rem; color:var(--secondary); margin-top:2px;">${i.desc}</div>
+                <div style="flex:1">
+                    <span class="part-code">${i.partNo}</span>
+                    <span class="part-desc">${i.desc}</span>
+                    <div style="margin-top:5px;">${locTags}</div>
                 </div>`;
             container.appendChild(div);
         });
     }
 
-    function filterSimpanList() { renderSimpanList(true); }
-
-    function selectPartManual(item) {
+    function selectPartSimpan(item) {
         tempPart = item;
-        document.getElementById('activePartPanel').style.display = 'block';
+        document.getElementById('simpanStatusPanel').style.display = 'block';
         document.getElementById('activePartNo').innerText = item.partNo;
         document.getElementById('activePartDesc').innerText = item.desc;
         
-        document.querySelectorAll('.simpan-item').forEach(el => el.classList.remove('active-select'));
+        document.querySelectorAll('.item-card').forEach(el => el.classList.remove('selected'));
         const row = document.getElementById(`simpan-row-${item.id}`);
         if(row) {
-            row.classList.add('active-select');
-            row.scrollIntoView({behavior: "smooth", block: "center"});
+            row.classList.add('selected');
+            row.scrollIntoView({behavior:'smooth', block:'center'});
         }
-        // Focus Qty but try to prevent keyboard on mobile if scanning
-        if(!isContinuous) document.getElementById('simpanQty').focus(); 
     }
 
     function clearActivePart() {
         tempPart = null;
-        document.getElementById('activePartPanel').style.display = 'none';
-        document.querySelectorAll('.simpan-item').forEach(el => el.classList.remove('active-select'));
+        document.getElementById('simpanStatusPanel').style.display = 'none';
+        document.querySelectorAll('.item-card').forEach(el => el.classList.remove('selected'));
     }
 
-    // --- CONTINUOUS SCAN ---
-    function toggleContinuousScan() {
-        const btn = document.getElementById('btnCamToggle');
-        if(isContinuous) {
-            stopScanner();
-            isContinuous = false;
-            btn.classList.remove('cam-active');
-            btn.innerHTML = '<i class="fas fa-camera"></i>';
-        } else {
-            isContinuous = true;
-            btn.classList.add('cam-active');
-            btn.innerHTML = '<i class="fas fa-stop"></i>';
-            startSmartScanner();
-        }
+    function createNewItem(code) {
+        const item = {
+            id: Date.now(), partNo: code, desc: "PART BARU", 
+            locType: document.getElementById('filterLoc').value,
+            techName: document.getElementById('filterTech').value,
+            locations: {}, sysQty: 0, raw: {}
+        };
+        localItems.push(item); filteredItems.push(item);
+        return item;
     }
 
-    function startSmartScanner() {
-        document.getElementById('reader-wrapper').style.display = 'block';
-        if(scanner) scanner.clear();
-        scanner = new Html5Qrcode("reader");
-        scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (txt) => {
-            handleSmartScan(txt);
-        }).catch(err => {
-            showToast("Error Kamera: " + err);
-            toggleContinuousScan(); // Turn off
-        });
-    }
-
-    function handleSmartScan(code) {
-        const now = Date.now();
-        if (now - lastScanTime < scanDelay) return;
-        
-        code = code.trim().toUpperCase();
-        lastScanTime = now; 
-
-        const item = filteredItems.find(i => i.partNo.toUpperCase() === code);
-        
-        if (item) {
-            playBeep('success');
-            selectPartManual(item);
-            showToast(`PART: ${item.partNo}`);
-        } else if (tempPart) {
-            // Assume Box Scan
-            playBeep('success');
-            processSimpanBox(code);
-        } else {
-            // Unknown Code
-            playBeep('error');
-            pendingNewCode = code;
-            showNewPartModal(code);
-        }
-    }
-
-    // --- SAVING LOGIC ---
     function processSimpanBox(box) {
         box = box.trim().toUpperCase();
-        if(!box || !tempPart) return;
-        
+        if(!tempPart) return;
         const qty = parseInt(document.getElementById('simpanQty').value) || 1;
         const locs = Object.keys(tempPart.locations);
-        
         if(locs.length === 0 || tempPart.locations[box]) {
             executeSaveDirect(box, qty);
         } else {
-            if(isContinuous) {
-                // Pause scanner slightly or just show modal overlay
-                openActionModal(box, qty, locs);
-            } else {
-                openActionModal(box, qty, locs);
-            }
+            feedback('error'); openActionModal(box, qty, locs);
         }
     }
 
     function executeSaveDirect(box, qty) {
         tempPart.locations[box] = (tempPart.locations[box] || 0) + qty;
-        saveDB(tempPart); 
-        playBeep('success');
-        showToast(`Disimpan ke ${box}`); 
-        resetSimpan();
+        saveDB(tempPart); feedback('success');
+        showToast(`Disimpan ke ${box}`); clearActivePart();
     }
 
-    function resetSimpan() {
-        clearActivePart();
-        document.getElementById('simpanSearch').value = '';
-        if(!isContinuous) stopScanner();
-        renderSimpanList(false); 
+    // --- TAB 2: OPNAME ---
+    function setOpnameBoxFilter(box) {
+        activeBoxFilter = box;
+        document.getElementById('activeBoxName').innerText = box;
+        document.getElementById('activeBoxPanel').style.display = 'block';
+        handleOpnameRender();
+    }
+    
+    function clearOpnameBoxFilter() {
+        activeBoxFilter = null;
+        document.getElementById('activeBoxPanel').style.display = 'none';
+        handleOpnameRender();
     }
 
-    // --- MODAL HANDLING ---
-    function showNewPartModal(code) {
-        document.getElementById('newPartCodeDisplay').innerText = code;
-        document.getElementById('confirmNewModal').style.display = 'flex';
-        // Stop scan temporarily if desired, or let it run but modal blocks interaction
+    function setOpnameFilter(type, btn) {
+        opnameFilter = type;
+        document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        handleOpnameRender();
     }
 
-    function confirmCreateNewPart() {
-        const newItem = {
-            id: Date.now(), partNo: pendingNewCode, desc: "Item Baru (Scan)", 
-            locType: document.getElementById('filterLoc').value,
-            techName: document.getElementById('filterTech').value,
-            locations: {}, sysQty: 0, raw: {}
-        };
-        localItems.push(newItem); filteredItems.push(newItem);
-        selectPartManual(newItem);
-        renderSimpanList(true);
-        closeNewPartModal();
+    function handleOpnameRender() {
+        const container = document.getElementById('opnameList');
+        container.innerHTML = '';
+        if(filteredItems.length === 0) return;
+
+        let dataset = filteredItems;
+        if(activeBoxFilter) dataset = dataset.filter(i => i.locations[activeBoxFilter]);
+
+        dataset = dataset.filter(i => {
+            const total = Object.values(i.locations).reduce((a,b)=>a+b,0);
+            if(opnameFilter==='diff') return total !== i.sysQty;
+            if(opnameFilter==='zero') return total === 0;
+            return true;
+        });
+
+        const show = dataset.slice(0, renderLimit);
+        show.forEach(i => {
+            const total = Object.values(i.locations).reduce((a,b)=>a+b,0);
+            let badge = total===i.sysQty ? 'qty-match' : (total===0 ? 'qty-zero' : 'qty-diff');
+            let locStr = activeBoxFilter 
+                ? `Box ${activeBoxFilter}: <b>${i.locations[activeBoxFilter]}</b>` 
+                : Object.entries(i.locations).map(([k,v])=>`${k}(${v})`).join(', ');
+
+            const div = document.createElement('div');
+            div.className = 'item-card';
+            div.onclick = () => openEditModal(i.id);
+            div.innerHTML = `
+                <div style="flex:1">
+                    <span class="part-code">${i.partNo}</span>
+                    <span class="part-desc">${i.desc}</span>
+                    <div style="margin-top:4px; font-size:0.75rem; color:var(--opname);"><i class="fas fa-map-marker-alt"></i> ${locStr || '-'}</div>
+                </div>
+                <div class="qty-badge ${badge}">${total} / ${i.sysQty}</div>`;
+            container.appendChild(div);
+        });
+        document.getElementById('opnameLoading').style.display = (renderLimit < dataset.length) ? 'block' : 'none';
     }
 
-    function closeNewPartModal() {
-        document.getElementById('confirmNewModal').style.display = 'none';
-        pendingNewCode = '';
+    // --- TAB 3: DATA (JUMP TO ITEM) ---
+    function renderDataList(reset = false) {
+        if(reset) renderLimit = 50;
+        const q = document.getElementById('cariInput').value.toLowerCase();
+        const container = document.getElementById('dataList');
+        if(reset || container.innerHTML === '') container.innerHTML = '';
+        
+        let dataset = filteredItems;
+        if(q) dataset = dataset.filter(i => i.partNo.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q));
+        
+        const show = dataset.slice(0, renderLimit);
+        if(show.length===0) { container.innerHTML='<div style="text-align:center; padding:20px; color:#999">Tidak ditemukan</div>'; return; }
+
+        let html = '';
+        show.forEach(i => {
+            const total = Object.values(i.locations).reduce((a,b)=>a+b,0);
+            const locs = Object.entries(i.locations).map(([k,v])=>`${k}(${v})`).join(', ');
+            let color = total!==i.sysQty ? 'var(--danger)' : (total>0 ? 'var(--opname)' : 'var(--text)');
+            
+            html += `
+            <div class="item-card" id="data-row-${i.id}" onclick="openEditModal(${i.id})">
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <b style="font-size:1rem;">${i.partNo}</b> 
+                        <span style="font-weight:bold; color:${color}">${total} / ${i.sysQty}</span>
+                    </div>
+                    <div style="font-size:0.8rem; color:var(--secondary);">${i.desc}</div>
+                    <div style="font-size:0.8rem; color:var(--data); margin-top:4px;">
+                        <i class="fas fa-map-marker-alt"></i> ${locs || '-'}
+                    </div>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+        document.getElementById('dataLoading').style.display = (renderLimit < dataset.length) ? 'block' : 'none';
     }
 
+    function jumpToItem(partNo) {
+        const index = filteredItems.findIndex(i => i.partNo.toUpperCase() === partNo.toUpperCase());
+        if (index === -1) {
+            feedback('error');
+            showToast("Part tidak ditemukan di filter ini");
+            return;
+        }
+
+        const item = filteredItems[index];
+        document.getElementById('cariInput').value = ''; // Reset local search
+
+        if (index >= renderLimit) renderLimit = index + 20;
+        
+        renderDataList(false); // Render full list
+
+        setTimeout(() => {
+            const row = document.getElementById(`data-row-${item.id}`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('highlight-row');
+                setTimeout(() => row.classList.remove('highlight-row'), 2000);
+                playTone(800, 'sine', 0.1);
+            }
+        }, 100);
+    }
+
+    // --- SHARED MODALS ---
     function openActionModal(box, qty, locs) {
         document.getElementById('actionModal').style.display = 'flex';
         document.getElementById('modalExistingLocs').innerText = locs.join(', ');
         document.getElementById('modalQty').innerText = qty;
         document.getElementById('modalTargetBox').innerText = box;
-        
         const sel = document.getElementById('moveSourceSelect');
         sel.innerHTML = '';
-        locs.forEach(l => sel.innerHTML += `<option value="${l}">${l} (Stok: ${tempPart.locations[l]})</option>`);
-        
-        document.getElementById('moveSourceDiv').style.display = 'none';
+        locs.forEach(l => sel.innerHTML += `<option value="${l}">${l} (${tempPart.locations[l]})</option>`);
+        document.getElementById('moveSourceDiv').style.display='none';
         tempPart.tempTarget = box; tempPart.tempQty = qty;
     }
 
@@ -662,264 +688,137 @@
         const item = tempPart; 
         const box = item.tempTarget; 
         const qty = item.tempQty;
-        
-        if(mode === 'add') {
-            item.locations[box] = (item.locations[box] || 0) + qty;
-            showToast("Berhasil Disimpan");
+        if(mode==='add') {
+            item.locations[box] = (item.locations[box]||0) + qty;
+            feedback('success');
         } else {
             const src = document.getElementById('moveSourceSelect').value;
-            if(item.locations[src] < qty) { playBeep('error'); return alert("Stok tidak cukup!"); }
+            if(item.locations[src] < qty) { feedback('error'); return alert('Stok kurang'); }
             item.locations[src] -= qty;
-            if(item.locations[src] <= 0) delete item.locations[src];
-            item.locations[box] = (item.locations[box] || 0) + qty;
-            showToast("Berhasil Dipindahkan");
+            if(item.locations[src]<=0) delete item.locations[src];
+            item.locations[box] = (item.locations[box]||0) + qty;
+            feedback('success');
         }
-        playBeep('success');
-        saveDB(item); closeActionModal(); resetSimpan();
+        saveDB(item); closeActionModal(); clearActivePart();
     }
 
-    function closeActionModal() { document.getElementById('actionModal').style.display = 'none'; }
-
-    // --- OPNAME TAB ---
-    function manualScanBoxTrigger() {
-        scanTarget = 'opname';
-        startModalScanner();
-    }
-
-    function handleOpnameBoxEnter(e) { if(e.key==='Enter') setOpnameBoxFilter(e.target.value); }
-
-    function setOpnameBoxFilter(box) {
-        box = box.trim().toUpperCase();
-        if(!box) return;
-        activeBoxFilter = box;
-        document.getElementById('activeBoxName').innerText = box;
-        document.getElementById('activeBoxIndicator').style.display = 'flex';
-        document.getElementById('opnameSearchArea').style.display = 'none';
-        renderLimit = 50; handleOpnameRender();
-    }
-
-    function clearOpnameBoxFilter() {
-        activeBoxFilter = null;
-        document.getElementById('activeBoxIndicator').style.display = 'none';
-        document.getElementById('opnameSearchArea').style.display = 'block';
-        document.getElementById('opnameInputBox').value = '';
-        renderLimit = 50; handleOpnameRender();
-    }
-
-    function setOpnameFilter(type, btn) {
-        opnameFilter = type;
-        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderLimit = 50; handleOpnameRender();
-    }
-
-    function handleOpnameRender() {
-        const container = document.getElementById('opnameListResult');
-        container.innerHTML = '';
-        if(filteredItems.length === 0) {
-            container.innerHTML = '<div style="padding:40px; text-align:center; color:#94a3b8;">Filter Lokasi Belum Dipilih</div>'; return;
-        }
-
-        let dataset = filteredItems;
-        if(activeBoxFilter) dataset = dataset.filter(i => i.locations[activeBoxFilter]);
-
-        dataset = dataset.filter(i => {
-            const totalPhys = Object.values(i.locations).reduce((a,b)=>a+b,0);
-            if(opnameFilter === 'diff') return totalPhys !== i.sysQty;
-            if(opnameFilter === 'zero') return totalPhys === 0;
-            return true;
-        });
-
-        const show = dataset.slice(0, renderLimit);
-        if(show.length === 0) { container.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">Tidak ada data.</div>'; return; }
-
-        show.forEach(i => {
-            const totalPhys = Object.values(i.locations).reduce((a,b)=>a+b,0);
-            let badgeClass = 'qty-diff';
-            if(totalPhys === i.sysQty) badgeClass = 'qty-match';
-            if(totalPhys === 0) badgeClass = 'qty-zero';
-
-            let locStr = activeBoxFilter 
-                ? `Box ${activeBoxFilter}: <b>${i.locations[activeBoxFilter]}</b> pcs`
-                : Object.entries(i.locations).map(([k,v])=>`${k}(${v})`).join(', ');
-
-            const div = document.createElement('div');
-            div.className = 'item-row';
-            div.onclick = () => openEditModal(i.id);
-            div.innerHTML = `
-                <div style="flex:1;">
-                    <div style="font-weight:bold; font-size:1rem;">${i.partNo}</div>
-                    <div style="font-size:0.8rem; color:#64748b;">${i.desc}</div>
-                    <div style="font-size:0.75rem; margin-top:4px; color:#2563eb;">
-                        <i class="fas fa-map-marker-alt"></i> ${locStr || 'Belum ada'}
-                    </div>
-                </div>
-                <div style="text-align:right; margin-left:10px;">
-                    <span class="qty-badge ${badgeClass}">${totalPhys} / ${i.sysQty}</span>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-        document.getElementById('loadingMore').style.display = (renderLimit < dataset.length) ? 'block' : 'none';
-    }
-
-    // --- CARI TAB ---
-    function handleCariRender() {
-        const q = document.getElementById('cariInput').value.toLowerCase();
-        const container = document.getElementById('cariResultList');
-        container.innerHTML = '';
-        if(q.length < 2) return;
-
-        const res = filteredItems.filter(i => i.partNo.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)).slice(0, 20);
-        res.forEach(i => {
-            const total = Object.values(i.locations).reduce((a,b)=>a+b,0);
-            const locs = Object.entries(i.locations).map(([k,v])=>`${k}(${v})`).join(', ');
-            const div = document.createElement('div');
-            div.className = 'card'; div.style.padding = '10px';
-            div.onclick = () => { switchTab('opname'); openEditModal(i.id); }; 
-            div.innerHTML = `
-                <div style="display:flex; justify-content:space-between;"><b>${i.partNo}</b> <span>Total: ${total}</span></div>
-                <div style="font-size:0.8rem; color:#666">${i.desc}</div>
-                <div style="font-size:0.8rem; color:#2563eb; margin-top:5px;">${locs}</div>`;
-            container.appendChild(div);
-        });
-    }
-
-    // --- EDIT MANUAL ---
     function openEditModal(id) {
         editId = id;
-        const item = localItems.find(i => i.id === id);
+        const item = localItems.find(i=>i.id===id);
         if(!item) return;
-        document.getElementById('editModal').style.display = 'flex';
+        document.getElementById('editModal').style.display='flex';
         document.getElementById('editPartTitle').innerText = item.partNo;
-        document.getElementById('editDescTitle').innerText = item.desc;
         const list = document.getElementById('editLocsList');
-        list.innerHTML = '';
+        list.innerHTML='';
         Object.keys(item.locations).forEach(box => {
-            const row = document.createElement('div');
-            row.style.cssText = "display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:5px;";
-            row.innerHTML = `
-                <span style="font-weight:bold; color:#334155;">${box}</span>
-                <div>
-                    <input type="number" class="edit-qty-input" data-box="${box}" value="${item.locations[box]}" style="width:60px; padding:6px; border:1px solid #cbd5e1; border-radius:4px;">
-                    <button class="btn-sm btn-danger" onclick="deleteLoc('${box}')"><i class="fas fa-trash"></i></button>
-                </div>`;
-            list.appendChild(row);
+            const r = document.createElement('div');
+            r.style.cssText="display:flex; justify-content:space-between; margin-bottom:8px;";
+            r.innerHTML=`<b>${box}</b> <div style="display:flex; gap:5px;"><input type="number" class="edit-qty-input" data-box="${box}" value="${item.locations[box]}" style="width:50px;"><button class="btn-sm btn-danger" onclick="delLoc('${box}')">X</button></div>`;
+            list.appendChild(r);
         });
     }
 
-    function deleteLoc(box) {
-        if(confirm("Hapus lokasi ini?")) {
-            const item = localItems.find(i => i.id === editId);
-            delete item.locations[box];
+    function addManualLoc() {
+        const box = document.getElementById('editNewBox').value.toUpperCase();
+        const qty = parseInt(document.getElementById('editNewQty').value);
+        if(box && qty) {
+            const item = localItems.find(i=>i.id===editId);
+            item.locations[box] = qty;
             saveDB(item); openEditModal(editId);
         }
     }
-    function addManualLoc() {
-        const box = document.getElementById('editNewBox').value.trim().toUpperCase();
-        const qty = parseInt(document.getElementById('editNewQty').value);
-        if(!box || !qty) return;
-        const item = localItems.find(i => i.id === editId);
-        item.locations[box] = qty;
-        saveDB(item); document.getElementById('editNewBox').value=''; document.getElementById('editNewQty').value=''; openEditModal(editId);
+    function delLoc(box) {
+        if(confirm('Hapus?')) {
+            const item = localItems.find(i=>i.id===editId);
+            delete item.locations[box]; saveDB(item); openEditModal(editId);
+        }
     }
     function saveManualEdit() {
-        const item = localItems.find(i => i.id === editId);
+        const item = localItems.find(i=>i.id===editId);
         document.querySelectorAll('.edit-qty-input').forEach(inp => {
-            const val = parseInt(inp.value);
-            if(val > 0) item.locations[inp.dataset.box] = val;
-            else delete item.locations[inp.dataset.box];
+            const v = parseInt(inp.value);
+            if(v>0) item.locations[inp.dataset.box]=v; else delete item.locations[inp.dataset.box];
         });
-        saveDB(item); document.getElementById('editModal').style.display='none'; showToast("Perubahan Disimpan"); handleOpnameRender();
+        saveDB(item); document.getElementById('editModal').style.display='none'; 
+        handleOpnameRender(); renderDataList(false);
     }
     
-    // --- GENERIC MODAL SCANNER ---
-    function startModalScanner() {
-        document.getElementById('reader-wrapper').style.display = 'block';
-        if(scanner) scanner.clear();
-        scanner = new Html5Qrcode("reader");
-        scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, txt => {
-            stopScanner();
-            if(scanTarget==='opname') setOpnameBoxFilter(txt);
-        });
-    }
-
-    function stopScanner() {
-        if(scanner) scanner.stop().then(() => document.getElementById('reader-wrapper').style.display='none');
-    }
-
+    // --- UTILS ---
     function saveDB(item) {
         const tx = db.transaction('items', 'readwrite');
         tx.objectStore('items').put(item);
     }
+    function closeActionModal() { document.getElementById('actionModal').style.display='none'; }
+    
+    function switchTab(id) {
+        currentTab = id;
+        document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+        document.getElementById('tab-'+id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+        // Context Color Change
+        const root = document.documentElement;
+        if(id === 'simpan') root.style.setProperty('--active-color', 'var(--primary)');
+        if(id === 'opname') root.style.setProperty('--active-color', 'var(--opname)');
+        if(id === 'data') root.style.setProperty('--active-color', 'var(--data)');
 
-    // --- UTILS ---
-    function updateDelayLabel(val) {
-        scanDelay = val * 1000;
-        document.getElementById('delayLabel').innerText = val + " Detik";
-        localStorage.setItem('scanDelay', val);
+        // Render Triggers
+        if(id === 'opname') handleOpnameRender();
+        if(id === 'simpan') renderSimpanList(true);
+        if(id === 'data') renderDataList(true);
+        
+        document.getElementById('mainInput').focus();
     }
+
+    function toggleMenu() { const e=document.getElementById('menuModal'); e.style.display=e.style.display==='flex'?'none':'flex'; }
+    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', document.body.classList.contains('dark-mode')); }
+    function toggleMoveOption() { document.getElementById('moveSourceDiv').style.display='block'; }
+    
     function handleImport(input) {
-        const f = input.files[0]; if(!f) return;
-        const r = new FileReader();
-        r.onload = e => {
-            const wb = XLSX.read(e.target.result, {type:'array'});
-            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
-            const tx = db.transaction('items', 'readwrite');
-            const st = tx.objectStore('items'); st.clear();
-            json.forEach((row, idx) => {
+        const f=input.files[0]; if(!f)return;
+        const r=new FileReader();
+        r.onload=e=>{
+            const wb=XLSX.read(e.target.result,{type:'array'});
+            const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+            const tx=db.transaction('items','readwrite');
+            const st=tx.objectStore('items'); st.clear();
+            json.forEach((row,i)=>{
                 st.add({
-                    id: idx+1,
-                    locType: row['Tipe Lokasi']||'UMUM',
-                    techName: row['Nama']||'',
-                    partNo: String(row['Part']||row['Nomor Gudang']||'').trim(),
-                    desc: row['Deskripsi Part']||'',
-                    sysQty: parseInt(row['Available QTY']||0),
-                    locations: {}, raw: row
+                    id:i+1, locType:row['Tipe Lokasi']||'UMUM', techName:row['Nama']||'',
+                    partNo:String(row['Part']||row['Nomor Gudang']||'').trim(),
+                    desc:row['Deskripsi Part']||'', sysQty:parseInt(row['Available QTY']||0),
+                    locations:{}, raw:row
                 });
             });
-            tx.oncomplete = () => location.reload();
+            tx.oncomplete=()=>location.reload();
         }; r.readAsArrayBuffer(f);
     }
     function exportData() {
-        const data = localItems.map(i => {
-            let row = {...i.raw};
-            const phys = Object.values(i.locations).reduce((a,b)=>a+b,0);
-            row['QTY Fisik'] = phys;
-            row['Lokasi Detail'] = Object.entries(i.locations).map(([k,v])=>`${k}(${v})`).join(', ');
-            row['Selisih'] = phys - i.sysQty;
-            return row;
+        const data=localItems.map(i=>{
+            let r={...i.raw};
+            const p=Object.values(i.locations).reduce((a,b)=>a+b,0);
+            r['QTY Fisik']=p; r['Lokasi']=Object.entries(i.locations).map(([k,v])=>`${k}(${v})`).join(', ');
+            r['Selisih']=p-i.sysQty; return r;
         });
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "SO_Result");
-        XLSX.writeFile(wb, "Hasil_SO.xlsx"); toggleMenu();
+        const ws=XLSX.utils.json_to_sheet(data);
+        const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Result");
+        XLSX.writeFile(wb,"WMS_Result.xlsx");
     }
     function backupJson() {
-        const b = new Blob([JSON.stringify(localItems)], {type:'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download='backup.json'; a.click(); toggleMenu();
+        const b=new Blob([JSON.stringify(localItems)],{type:'application/json'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='backup.json'; a.click();
     }
     function restoreJson(input) {
-        const f = input.files[0]; if(!f) return;
-        const r = new FileReader(); r.onload = e => {
-            const data = JSON.parse(e.target.result);
-            const tx = db.transaction('items', 'readwrite'); const st = tx.objectStore('items'); st.clear();
-            data.forEach(i => st.add(i)); tx.oncomplete = () => location.reload();
+        const f=input.files[0]; if(!f)return;
+        const r=new FileReader(); r.onload=e=>{
+            const d=JSON.parse(e.target.result);
+            const tx=db.transaction('items','readwrite'); const st=tx.objectStore('items'); st.clear();
+            d.forEach(i=>st.add(i)); tx.oncomplete=()=>location.reload();
         }; r.readAsText(f);
     }
-    function toggleMenu() { const e = document.getElementById('menuModal'); e.style.display = e.style.display==='flex'?'none':'flex'; }
-    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); localStorage.setItem('darkMode', document.body.classList.contains('dark-mode')); }
-    function switchTab(id) {
-        currentTab = id;
-        document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
-        document.getElementById('tab-'+id).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-        if(id === 'opname') handleOpnameRender();
-        if(id === 'simpan') renderSimpanList(true);
-    }
     function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-    function clearData() { if(confirm("Hapus Semua?")) { const tx=db.transaction('items','readwrite'); tx.objectStore('items').clear(); tx.oncomplete=()=>location.reload(); }}
+    function clearData() { if(confirm('Hapus Semua?')) { const tx=db.transaction('items','readwrite'); tx.objectStore('items').clear(); tx.oncomplete=()=>location.reload(); }}
 </script>
 </body>
 </html>
