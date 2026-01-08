@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Warehouse Management System</title>
+    <title>Warehouse Management System v2</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -12,6 +12,7 @@
             --primary: #2563eb;     /* Simpan Color */
             --opname: #16a34a;      /* Opname Color */
             --data: #b6354f;        /* Data/Search Color */
+            --purple: #9333ea;      /* Multi Scan Color */
             
             --bg: #f1f5f9;
             --card: #ffffff;
@@ -101,6 +102,11 @@
         .status-panel { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: none; animation: slideDown 0.2s; }
         @keyframes slideDown { from {opacity:0; transform:translateY(-10px);} to {opacity:1; transform:translateY(0);} }
 
+        /* MULTI SCAN PANEL */
+        .multi-panel { background: #f3e8ff; border: 1px solid #d8b4fe; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: none; }
+        .multi-tag { background: #a855f7; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; margin-right: 5px; margin-bottom: 5px; display: inline-block; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn { from {transform: scale(0);} to {transform: scale(1);} }
+
         /* NAV TABS */
         .nav-tabs { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); border-top: 1px solid var(--border); display: flex; height: 60px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
         .nav-item { flex: 1; border: none; background: none; color: var(--secondary); font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: color 0.3s; }
@@ -114,6 +120,8 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--opname); color: white; }
         .btn-danger { background: var(--danger); color: white; }
+        .btn-purple { background: var(--purple); color: white; }
+        .btn-warning { background: #ca8a04; color: white; }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
         .btn-sm { width: auto; padding: 5px 10px; font-size: 0.85rem; }
 
@@ -144,15 +152,31 @@
         <input type="text" id="mainInput" class="main-input" placeholder="Scan Part / Box..." inputmode="none" autocomplete="off" onkeydown="handleInputKeyDown(event)">
         <i class="fas fa-barcode input-icon"></i>
     </div>
-    <div style="display:flex; justify-content:space-between; margin-top:5px; align-items:center;">
+    <div style="display:flex; justify-content:space-between; margin-top:8px; align-items:center;">
         <small style="color:var(--secondary); font-weight:500; height:20px;" id="scanStatusText">Siap Scan...</small>
-        <div style="font-size:0.8rem;">
-            <label><input type="checkbox" id="chkManualType" onchange="toggleKeyboardMode()"> Ketik</label>
+        <div style="display:flex; gap:15px; font-size:0.8rem; align-items:center;">
+            <label id="multiScanToggle" style="display:flex; align-items:center; gap:5px; color:var(--purple); font-weight:bold;">
+                <input type="checkbox" id="chkMultiScan" onchange="toggleMultiMode()"> Multi Scan
+            </label>
+            <label style="display:flex; align-items:center; gap:5px;">
+                <input type="checkbox" id="chkManualType" onchange="toggleKeyboardMode()"> Ketik
+            </label>
         </div>
     </div>
 </div>
 
 <div id="tab-simpan" class="tab-content active">
+    <div id="multiScanPanel" class="multi-panel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <b style="color:var(--purple);"><i class="fas fa-layer-group"></i> Buffer: <span id="multiCount">0</span> items</b>
+            <button class="btn-sm btn-danger" onclick="clearMultiBuffer()">Clear</button>
+        </div>
+        <div id="multiTagsContainer" style="max-height:100px; overflow-y:auto; padding-bottom:5px;"></div>
+        <div style="margin-top:10px; font-size:0.9rem; font-weight:bold; color:var(--purple); animation: pulse 2s infinite; text-align:center;">
+            <i class="fas fa-arrow-right"></i> SCAN BOX UNTUK MENYIMPAN SEMUA
+        </div>
+    </div>
+
     <div id="simpanStatusPanel" class="status-panel">
         <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
             <b style="font-size:1.1rem; color:var(--primary);" id="activePartNo">-</b>
@@ -207,17 +231,25 @@
 
 <div class="overlay" id="actionModal">
     <div class="modal">
-        <h3 style="text-align:center;">Konfirmasi Simpan</h3>
-        <p style="text-align:center; color:var(--secondary);">Part ini sudah ada di: <b id="modalExistingLocs"></b></p>
+        <h3 style="text-align:center;" id="modalTitle">Konfirmasi Simpan</h3>
+        <p style="text-align:center; color:var(--secondary);" id="modalDesc"></p>
+        
         <div style="background:var(--bg); padding:15px; text-align:center; border-radius:8px; margin:10px 0;">
-            Simpan <b><span id="modalQty" style="font-size:1.2rem;"></span> pcs</b> ke <b><span id="modalTargetBox" style="color:var(--primary);"></span></b>?
+            <div id="modalMainPrompt"></div>
         </div>
-        <button class="btn btn-success" onclick="executeSave('add')">SPLIT / TAMBAH (Stok Total Bertambah)</button>
-        <button class="btn btn-warning" onclick="toggleMoveOption()">PINDAHKAN (Stok Total Tetap)</button>
+
+        <button class="btn btn-success" onclick="confirmSave('add')">SPLIT / TAMBAH (Stok Bertambah)</button>
+        <button class="btn btn-warning" id="btnMove" onclick="toggleMoveOption()">PINDAHKAN (Stok Tetap)</button>
+        
         <div id="moveSourceDiv" style="display:none; margin-top:10px; padding:10px; background:var(--bg); border:1px solid var(--border);">
-            <small>Ambil dari:</small>
-            <select id="moveSourceSelect" style="margin-bottom:5px; width:100%; padding:8px;"></select>
-            <button class="btn btn-primary btn-sm" onclick="executeSave('move')">Konfirmasi Pindah</button>
+            <div id="singleMoveUI">
+                <small>Ambil dari:</small>
+                <select id="moveSourceSelect" style="margin-bottom:5px; width:100%; padding:8px;"></select>
+            </div>
+            <div id="multiMoveUI" style="display:none; color:var(--secondary); font-size:0.9rem; margin-bottom:5px;">
+                Semua part yang konflik akan dipindahkan dari lokasi lamanya ke box ini.
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="confirmSave('move')">Konfirmasi Pindah</button>
         </div>
         <button class="btn btn-outline" onclick="closeActionModal()">Batal</button>
     </div>
@@ -313,7 +345,7 @@
         clearTimeout(statusTimeout);
         statusTimeout = setTimeout(() => {
             el.innerText = "Siap Scan...";
-        }, 4000); // 4 Detik hilang
+        }, 4000); 
     }
 
     // --- DB CONFIG ---
@@ -328,7 +360,14 @@
     let activeBoxFilter = null;
     let renderLimit = 50;
     
+    // Single Scan State
     let tempPart = null; 
+    
+    // Multi Scan State
+    let isMultiScan = false;
+    let multiBuffer = []; // Array of item objects
+    let batchConflictData = null; // Store temp data for batch conflicts
+
     let editId = null;
 
     // --- INIT ---
@@ -401,6 +440,7 @@
 
         // Reset All
         clearActivePart();
+        clearMultiBuffer();
         clearOpnameBoxFilter();
         handleOpnameRender();
         renderSimpanList(true);
@@ -430,49 +470,94 @@
         input.focus();
     }
 
+    function toggleMultiMode() {
+        isMultiScan = document.getElementById('chkMultiScan').checked;
+        const root = document.documentElement;
+        
+        // UI Updates
+        document.getElementById('simpanStatusPanel').style.display = isMultiScan ? 'none' : 'none'; // Will handle logic below
+        document.getElementById('multiScanPanel').style.display = isMultiScan ? 'block' : 'none';
+        
+        if (isMultiScan) {
+            clearActivePart(); // Reset Single
+            root.style.setProperty('--active-color', 'var(--purple)');
+            document.querySelector('header').style.background = 'var(--purple)';
+            setStatus("Mode Multi Scan Aktif");
+        } else {
+            clearMultiBuffer(); // Reset Multi
+            root.style.setProperty('--active-color', 'var(--primary)');
+            document.querySelector('header').style.background = 'var(--primary)';
+            setStatus("Mode Single Scan");
+        }
+        document.getElementById('mainInput').focus();
+    }
+
     function processScan(code) {
         const item = filteredItems.find(i => i.partNo.toUpperCase() === code);
         
-        // 1. Jika itu PART
-        if (item) {
-            feedback('scan');
-            if (currentTab === 'simpan') {
-                selectPartSimpan(item);
-                setStatus(`Part Terpilih: ${item.partNo}`);
-            } else if (currentTab === 'opname') {
-                openEditModal(item.id);
-                setStatus(`Edit Part: ${item.partNo}`);
-            } else if (currentTab === 'data') {
-                // FEATURE: JUMP TO ITEM
-                jumpToItem(item.partNo);
-                setStatus(`Jump: ${item.partNo}`);
+        // === LOGIKA TAB SIMPAN ===
+        if (currentTab === 'simpan') {
+            if (item) {
+                // IT IS A PART
+                feedback('scan');
+                if (isMultiScan) {
+                    addToMultiBuffer(item);
+                } else {
+                    selectPartSimpan(item);
+                    setStatus(`Part Terpilih: ${item.partNo}`);
+                }
+            } else {
+                // NOT A PART (Box / Unknown)
+                if (isMultiScan) {
+                    // In Multi Mode, non-part is assumed to be BOX trigger
+                    if (multiBuffer.length > 0) {
+                        processMultiBatchSave(code);
+                    } else {
+                         if(confirm(`Kode "${code}" tidak dikenal. Buat Part Baru?`)) {
+                             const newItem = createNewItem(code);
+                             addToMultiBuffer(newItem);
+                         }
+                    }
+                } else {
+                    // Single Mode
+                    if (tempPart) {
+                        processSimpanBox(code);
+                    } else {
+                        if(confirm(`Kode "${code}" tidak dikenal. Buat Part Baru?`)) {
+                            const newItem = createNewItem(code);
+                            selectPartSimpan(newItem);
+                        } else {
+                            feedback('error');
+                        }
+                    }
+                }
             }
             return;
         }
 
-        // 2. Jika bukan Part (Asumsi Box / Part Baru)
-        if (currentTab === 'simpan') {
-            if (tempPart) {
-                processSimpanBox(code); // Simpan ke Box
-            } else {
-                if(confirm(`Kode "${code}" tidak dikenal. Buat Part Baru?`)) {
-                    const newItem = createNewItem(code);
-                    selectPartSimpan(newItem);
-                } else {
-                    feedback('error');
-                }
-            }
-        } else if (currentTab === 'opname') {
+        // === LOGIKA TAB LAIN ===
+        if (item) {
             feedback('scan');
-            setOpnameBoxFilter(code);
-            setStatus(`Filter Box: ${code}`);
-        } else if (currentTab === 'data') {
-            feedback('error');
-            setStatus("Item tidak ditemukan.");
+            if (currentTab === 'opname') {
+                openEditModal(item.id);
+                setStatus(`Edit Part: ${item.partNo}`);
+            } else if (currentTab === 'data') {
+                jumpToItem(item.partNo);
+                setStatus(`Jump: ${item.partNo}`);
+            }
+        } else {
+            if (currentTab === 'opname') {
+                feedback('scan');
+                setOpnameBoxFilter(code);
+                setStatus(`Filter Box: ${code}`);
+            } else {
+                feedback('error');
+                setStatus("Item tidak ditemukan.");
+            }
         }
     }
 
-    // --- TAB 1: SIMPAN ---
+    // --- TAB 1: SIMPAN (SINGLE) ---
     function renderSimpanList(reset = true) {
         if(reset) renderLimit = 50;
         const container = document.getElementById('simpanList');
@@ -489,7 +574,10 @@
             const div = document.createElement('div');
             div.className = `item-card ${isActive ? 'selected' : ''}`;
             div.id = `simpan-row-${i.id}`;
-            div.onclick = () => selectPartSimpan(i);
+            div.onclick = () => {
+                if(!isMultiScan) selectPartSimpan(i);
+                else addToMultiBuffer(i);
+            };
             div.innerHTML = `
                 <div style="flex:1">
                     <span class="part-code">${i.partNo}</span>
@@ -501,6 +589,7 @@
     }
 
     function selectPartSimpan(item) {
+        if(isMultiScan) return;
         tempPart = item;
         document.getElementById('simpanStatusPanel').style.display = 'block';
         document.getElementById('activePartNo').innerText = item.partNo;
@@ -531,22 +620,182 @@
         return item;
     }
 
+    // --- TAB 1: SIMPAN (MULTI SCAN LOGIC) ---
+    function addToMultiBuffer(item) {
+        // Add to array
+        multiBuffer.push(item);
+        
+        // Update UI
+        const container = document.getElementById('multiTagsContainer');
+        const tag = document.createElement('span');
+        tag.className = 'multi-tag';
+        tag.innerText = item.partNo;
+        container.prepend(tag); // Add to top
+        
+        document.getElementById('multiCount').innerText = multiBuffer.length;
+        
+        // Highlight in list
+        const row = document.getElementById(`simpan-row-${item.id}`);
+        if(row) row.classList.add('selected');
+    }
+
+    function clearMultiBuffer() {
+        multiBuffer = [];
+        document.getElementById('multiTagsContainer').innerHTML = '';
+        document.getElementById('multiCount').innerText = '0';
+        document.querySelectorAll('.item-card').forEach(el => el.classList.remove('selected'));
+    }
+
+    function processMultiBatchSave(box) {
+        box = box.trim().toUpperCase();
+        // Cek konflik
+        // Konflik = item yang sudah punya lokasi, tapi bukan di box yang sedang discan
+        const conflicts = multiBuffer.filter(i => {
+            const locs = Object.keys(i.locations);
+            if (locs.length === 0) return false; // Kosong = aman
+            if (locs.length === 1 && locs[0] === box) return false; // Sudah di box ini = aman
+            return true; // Ada di box lain
+        });
+
+        if (conflicts.length > 0) {
+            feedback('error');
+            const names = [...new Set(conflicts.map(c => c.partNo))].join(', ');
+            batchConflictData = { box: box, conflicts: conflicts }; // Simpan state
+            
+            openActionModalBatch(box, multiBuffer.length, names);
+        } else {
+            // Safe to save all
+            executeBatchSave(box, 'add');
+        }
+    }
+
+    function executeBatchSave(box, mode) {
+        const tx = db.transaction('items', 'readwrite');
+        const store = tx.objectStore('items');
+        
+        multiBuffer.forEach(item => {
+            if (mode === 'move') {
+                // Move logic: Hapus dari lokasi lama, pindah ke baru
+                // (Sederhana: Hapus semua lokasi lama, set ke baru dengan Qty total lama + 1)
+                // Note: Logic ini diasumsikan user ingin memindahkan 1 pcs yang discan dari lokasi lama.
+                // Namun untuk multi scan, biasanya berarti barang fisik ada di tangan, jadi kita tambah ke box baru.
+                // Jika "Pindahkan" dipilih, kita kurangi stok di lokasi lama (algoritma FIFO lokasi)
+                
+                // Simplified Move for Multi:
+                // Kita tidak tau item spesifik mana ambil dari box mana jika dia punya banyak lokasi.
+                // Jadi kita anggap "Pindahkan" = "Semua yang discan ini sekarang ada di BOX BARU, dan tidak ada di BOX LAMA"
+                // Tapi ini berbahaya. 
+                
+                // Logic aman "PINDAHKAN" di Multi Scan: 
+                // Kurangi 1 dari lokasi "Terbesar" atau "Pertama", tambah 1 ke lokasi Baru.
+                const locs = Object.keys(item.locations);
+                if(locs.length > 0 && !item.locations[box]) {
+                     const oldBox = locs[0];
+                     if(item.locations[oldBox] > 0) {
+                         item.locations[oldBox]--;
+                         if(item.locations[oldBox]<=0) delete item.locations[oldBox];
+                     }
+                }
+            }
+            
+            // Add Logic (Default)
+            item.locations[box] = (item.locations[box] || 0) + 1;
+            store.put(item);
+        });
+
+        tx.oncomplete = () => {
+            feedback('success');
+            showToast(`${multiBuffer.length} Item disimpan ke ${box}`);
+            clearMultiBuffer();
+            closeActionModal();
+        };
+    }
+
+    // --- SHARED MODALS & SAVING ---
     function processSimpanBox(box) {
         box = box.trim().toUpperCase();
         if(!tempPart) return;
         const qty = parseInt(document.getElementById('simpanQty').value) || 1;
         const locs = Object.keys(tempPart.locations);
         if(locs.length === 0 || tempPart.locations[box]) {
-            executeSaveDirect(box, qty);
+            tempPart.locations[box] = (tempPart.locations[box] || 0) + qty;
+            saveDB(tempPart); feedback('success');
+            showToast(`Disimpan ke ${box}`); clearActivePart();
         } else {
-            feedback('error'); openActionModal(box, qty, locs);
+            feedback('error'); openActionModalSingle(box, qty, locs);
         }
     }
 
-    function executeSaveDirect(box, qty) {
-        tempPart.locations[box] = (tempPart.locations[box] || 0) + qty;
-        saveDB(tempPart); feedback('success');
-        showToast(`Disimpan ke ${box}`); clearActivePart();
+    function openActionModalSingle(box, qty, locs) {
+        document.getElementById('actionModal').style.display = 'flex';
+        document.getElementById('modalTitle').innerText = "Konfirmasi Simpan";
+        document.getElementById('modalDesc').innerText = `Part ini sudah ada di: ${locs.join(', ')}`;
+        
+        document.getElementById('modalMainPrompt').innerHTML = `Simpan <b>${qty} pcs</b> ke <b style="color:var(--primary);">${box}</b>?`;
+        
+        // Setup Single UI
+        document.getElementById('singleMoveUI').style.display = 'block';
+        document.getElementById('multiMoveUI').style.display = 'none';
+        
+        const sel = document.getElementById('moveSourceSelect');
+        sel.innerHTML = '';
+        locs.forEach(l => sel.innerHTML += `<option value="${l}">${l} (${tempPart.locations[l]})</option>`);
+        
+        document.getElementById('moveSourceDiv').style.display='none';
+        
+        // Temp Data
+        tempPart.tempTarget = box; 
+        tempPart.tempQty = qty;
+        tempPart.isBatch = false;
+    }
+
+    function openActionModalBatch(box, totalQty, conflictNames) {
+        document.getElementById('actionModal').style.display = 'flex';
+        document.getElementById('modalTitle').innerText = "Konfirmasi Multi Scan";
+        
+        // Limit text length
+        const dispNames = conflictNames.length > 50 ? conflictNames.substring(0,50)+'...' : conflictNames;
+        document.getElementById('modalDesc').innerHTML = `Beberapa part sudah ada di lokasi lain:<br><b>${dispNames}</b>`;
+        
+        document.getElementById('modalMainPrompt').innerHTML = `Simpan Total <b>${totalQty} Items</b> ke <b style="color:var(--purple);">${box}</b>?`;
+
+        // Setup Multi UI
+        document.getElementById('singleMoveUI').style.display = 'none';
+        document.getElementById('multiMoveUI').style.display = 'block';
+        document.getElementById('moveSourceDiv').style.display='none';
+
+        // Temp Data
+        batchConflictData.tempTarget = box;
+        batchConflictData.isBatch = true;
+    }
+
+    function confirmSave(mode) {
+        // Cek context: Single or Batch
+        const isBatch = batchConflictData && batchConflictData.isBatch;
+        
+        if (isBatch) {
+            // Handle Batch
+            executeBatchSave(batchConflictData.tempTarget, mode);
+            batchConflictData = null;
+        } else {
+            // Handle Single
+            const item = tempPart; 
+            const box = item.tempTarget; 
+            const qty = item.tempQty;
+            
+            if(mode==='add') {
+                item.locations[box] = (item.locations[box]||0) + qty;
+                feedback('success');
+            } else {
+                const src = document.getElementById('moveSourceSelect').value;
+                if(item.locations[src] < qty) { feedback('error'); return alert('Stok kurang'); }
+                item.locations[src] -= qty;
+                if(item.locations[src]<=0) delete item.locations[src];
+                item.locations[box] = (item.locations[box]||0) + qty;
+                feedback('success');
+            }
+            saveDB(item); closeActionModal(); clearActivePart();
+        }
     }
 
     // --- TAB 2: OPNAME ---
@@ -671,37 +920,7 @@
         }, 100);
     }
 
-    // --- SHARED MODALS ---
-    function openActionModal(box, qty, locs) {
-        document.getElementById('actionModal').style.display = 'flex';
-        document.getElementById('modalExistingLocs').innerText = locs.join(', ');
-        document.getElementById('modalQty').innerText = qty;
-        document.getElementById('modalTargetBox').innerText = box;
-        const sel = document.getElementById('moveSourceSelect');
-        sel.innerHTML = '';
-        locs.forEach(l => sel.innerHTML += `<option value="${l}">${l} (${tempPart.locations[l]})</option>`);
-        document.getElementById('moveSourceDiv').style.display='none';
-        tempPart.tempTarget = box; tempPart.tempQty = qty;
-    }
-
-    function executeSave(mode) {
-        const item = tempPart; 
-        const box = item.tempTarget; 
-        const qty = item.tempQty;
-        if(mode==='add') {
-            item.locations[box] = (item.locations[box]||0) + qty;
-            feedback('success');
-        } else {
-            const src = document.getElementById('moveSourceSelect').value;
-            if(item.locations[src] < qty) { feedback('error'); return alert('Stok kurang'); }
-            item.locations[src] -= qty;
-            if(item.locations[src]<=0) delete item.locations[src];
-            item.locations[box] = (item.locations[box]||0) + qty;
-            feedback('success');
-        }
-        saveDB(item); closeActionModal(); clearActivePart();
-    }
-
+    // --- SHARED UTILS ---
     function openEditModal(id) {
         editId = id;
         const item = localItems.find(i=>i.id===id);
@@ -743,7 +962,6 @@
         handleOpnameRender(); renderDataList(false);
     }
     
-    // --- UTILS ---
     function saveDB(item) {
         const tx = db.transaction('items', 'readwrite');
         tx.objectStore('items').put(item);
@@ -759,9 +977,20 @@
         
         // Context Color Change
         const root = document.documentElement;
-        if(id === 'simpan') root.style.setProperty('--active-color', 'var(--primary)');
-        if(id === 'opname') root.style.setProperty('--active-color', 'var(--opname)');
-        if(id === 'data') root.style.setProperty('--active-color', 'var(--data)');
+        if(id === 'simpan') {
+            // Restore color based on Multi Toggle state
+            const isMulti = document.getElementById('chkMultiScan').checked;
+            root.style.setProperty('--active-color', isMulti ? 'var(--purple)' : 'var(--primary)');
+            document.querySelector('header').style.background = isMulti ? 'var(--purple)' : 'var(--primary)';
+        }
+        if(id === 'opname') {
+            root.style.setProperty('--active-color', 'var(--opname)');
+            document.querySelector('header').style.background = 'var(--opname)';
+        }
+        if(id === 'data') {
+            root.style.setProperty('--active-color', 'var(--data)');
+            document.querySelector('header').style.background = 'var(--data)';
+        }
 
         // Render Triggers
         if(id === 'opname') handleOpnameRender();
@@ -822,7 +1051,3 @@
 </script>
 </body>
 </html>
-
-
-
-
