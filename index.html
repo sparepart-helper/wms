@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Warehouse Management System v2</title>
+    <title>Warehouse Management System v3</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -451,7 +451,8 @@
     // --- MAIN SCANNER LOGIC ---
     function handleInputKeyDown(e) {
         if(e.key === 'Enter') {
-            const val = e.target.value.trim().toUpperCase();
+            // Kita tidak perlu membersihkan '|' di sini karena akan ditangani di processScan
+            const val = e.target.value; 
             e.target.value = '';
             if(val) processScan(val);
         }
@@ -475,7 +476,7 @@
         const root = document.documentElement;
         
         // UI Updates
-        document.getElementById('simpanStatusPanel').style.display = isMultiScan ? 'none' : 'none'; // Will handle logic below
+        document.getElementById('simpanStatusPanel').style.display = isMultiScan ? 'none' : 'none'; 
         document.getElementById('multiScanPanel').style.display = isMultiScan ? 'block' : 'none';
         
         if (isMultiScan) {
@@ -493,12 +494,22 @@
     }
 
     function processScan(code) {
+        // --- CLEANING LOGIC UNTUK QR FORMAT LAMA ---
+        if(code.includes('|')) {
+            code = code.split('|')[0];
+        }
+        code = code.trim().toUpperCase();
+
         const item = filteredItems.find(i => i.partNo.toUpperCase() === code);
         
+        // --- BOX VALIDATION PATTERN ---
+        // XY-YY -> Huruf, Angka, Strip, Angka, Angka (Contoh: A1-05)
+        const boxPattern = /^[A-Z][0-9]-[0-9]{2}$/;
+
         // === LOGIKA TAB SIMPAN ===
         if (currentTab === 'simpan') {
             if (item) {
-                // IT IS A PART
+                // IT IS A KNOWN PART
                 feedback('scan');
                 if (isMultiScan) {
                     addToMultiBuffer(item);
@@ -507,21 +518,37 @@
                     setStatus(`Part Terpilih: ${item.partNo}`);
                 }
             } else {
-                // NOT A PART (Box / Unknown)
-                if (isMultiScan) {
-                    // In Multi Mode, non-part is assumed to be BOX trigger
-                    if (multiBuffer.length > 0) {
-                        processMultiBatchSave(code);
+                // NOT IN DB (Bisa Box atau Part Baru)
+                
+                // Cek apakah ini Box Valid?
+                const isBox = boxPattern.test(code);
+
+                if (isBox) {
+                     // INI ADALAH BOX
+                     if (isMultiScan) {
+                        // Di Multi Mode, Box men-trigger simpan
+                        if (multiBuffer.length > 0) {
+                            processMultiBatchSave(code);
+                        } else {
+                            feedback('error');
+                            setStatus("List Part Kosong!");
+                        }
                     } else {
+                        // Di Single Mode, Box menyimpan tempPart
+                        if (tempPart) {
+                            processSimpanBox(code);
+                        } else {
+                            feedback('error');
+                            showToast("Pilih Part dulu sebelum scan Box");
+                        }
+                    }
+                } else {
+                    // BUKAN BOX VALID DAN TIDAK ADA DI DB -> PART BARU
+                    if (isMultiScan) {
                          if(confirm(`Kode "${code}" tidak dikenal. Buat Part Baru?`)) {
                              const newItem = createNewItem(code);
                              addToMultiBuffer(newItem);
                          }
-                    }
-                } else {
-                    // Single Mode
-                    if (tempPart) {
-                        processSimpanBox(code);
                     } else {
                         if(confirm(`Kode "${code}" tidak dikenal. Buat Part Baru?`)) {
                             const newItem = createNewItem(code);
@@ -546,10 +573,17 @@
                 setStatus(`Jump: ${item.partNo}`);
             }
         } else {
+            // Item tidak ketemu
             if (currentTab === 'opname') {
-                feedback('scan');
-                setOpnameBoxFilter(code);
-                setStatus(`Filter Box: ${code}`);
+                // Cek validasi box juga di sini
+                if (boxPattern.test(code)) {
+                    feedback('scan');
+                    setOpnameBoxFilter(code);
+                    setStatus(`Filter Box: ${code}`);
+                } else {
+                    feedback('error');
+                    setStatus("Bukan Kode Box Valid / Part tidak ada");
+                }
             } else {
                 feedback('error');
                 setStatus("Item tidak ditemukan.");
@@ -675,17 +709,6 @@
         
         multiBuffer.forEach(item => {
             if (mode === 'move') {
-                // Move logic: Hapus dari lokasi lama, pindah ke baru
-                // (Sederhana: Hapus semua lokasi lama, set ke baru dengan Qty total lama + 1)
-                // Note: Logic ini diasumsikan user ingin memindahkan 1 pcs yang discan dari lokasi lama.
-                // Namun untuk multi scan, biasanya berarti barang fisik ada di tangan, jadi kita tambah ke box baru.
-                // Jika "Pindahkan" dipilih, kita kurangi stok di lokasi lama (algoritma FIFO lokasi)
-                
-                // Simplified Move for Multi:
-                // Kita tidak tau item spesifik mana ambil dari box mana jika dia punya banyak lokasi.
-                // Jadi kita anggap "Pindahkan" = "Semua yang discan ini sekarang ada di BOX BARU, dan tidak ada di BOX LAMA"
-                // Tapi ini berbahaya. 
-                
                 // Logic aman "PINDAHKAN" di Multi Scan: 
                 // Kurangi 1 dari lokasi "Terbesar" atau "Pertama", tambah 1 ke lokasi Baru.
                 const locs = Object.keys(item.locations);
