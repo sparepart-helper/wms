@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WMS V6: Pro Features</title>
+    <title>WMS V6: Pro Features (Fixed)</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -44,7 +44,7 @@
             height: 100vh; 
             overscroll-behavior: none; 
             transition: background 0.3s; 
-            user-select: none; /* Mencegah blok teks tidak sengaja */
+            user-select: none;
         }
         
         /* HEADER FIXED */
@@ -90,7 +90,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.03); transition: border-color 0.3s; 
         }
         .input-wrapper { position: relative; display: flex; gap: 8px; }
-        /* Fix Focus: Pointer events none pada icon agar klik area input maksimal */
         .main-input { 
             width: 100%; padding: 12px 40px 12px 15px; 
             border: 2px solid var(--border); border-radius: 8px; 
@@ -244,9 +243,9 @@
                     <input type="checkbox" id="chkMultiScan" onchange="toggleMultiMode()"> Multi Scan
                 </label>
 
-<label id="filterNoBoxToggle" style="display:none; align-items:center; gap:3px; color:#c2410c; font-weight:bold;">
-    <input type="checkbox" id="chkFilterNoBox" onchange="renderMultiBuffer()"> Belum Box
-</label>
+                <label id="filterNoBoxToggle" style="display:none; align-items:center; gap:3px; color:#c2410c; font-weight:bold;">
+                    <input type="checkbox" id="chkFilterNoBox" onchange="renderMultiBuffer()"> Belum Box
+                </label>
 
                 <label style="display:flex; align-items:center; gap:3px;">
                     <input type="checkbox" id="chkManualType" onchange="toggleKeyboardMode()"> Ketik
@@ -471,7 +470,6 @@
         if (wakeLock !== null && document.visibilityState === 'visible') await requestWakeLock();
     });
 
-    // Aggressive Focus: Klik dimanapun (kecuali input/button) balikin fokus ke scanner
     document.addEventListener('click', (e) => {
         const t = e.target;
         const interactive = ['INPUT','BUTTON','SELECT','TEXTAREA','A','LABEL'];
@@ -509,11 +507,10 @@
         await initDB();
         if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
         
-        requestWakeLock(); // Aktifkan Layar Terus Nyala
+        requestWakeLock();
         
         document.getElementById('mainInput').focus();
         
-        // Scroll Listeners
         const scrollBtn = document.getElementById('scrollTopBtn');
         const setupScroll = (id, callback) => {
             const el = document.getElementById(id);
@@ -621,7 +618,7 @@
             document.querySelector('header').style.background = 'var(--purple)';
             setStatus("Mode Multi Scan Aktif");
             
-            renderMultiBuffer(); // <--- TAMBAHAN: Paksa render ulang saat mode aktif
+            renderMultiBuffer(); 
         } else {
             clearMultiBuffer();
             root.style.setProperty('--active-color', 'var(--primary)');
@@ -834,7 +831,6 @@
         const container = document.getElementById('multiTagsContainer');
         const filterEl = document.getElementById('chkFilterNoBox');
         
-        // Safety check: Jika elemen belum siap
         if (!container || !filterEl) return;
 
         const filterActive = filterEl.checked;
@@ -843,21 +839,17 @@
         let displayCount = 0;
 
         multiBuffer.forEach(item => {
-            // Pengaman: Pastikan locations dianggap object kosong jika null/undefined
             const locs = item.locations || {};
             const hasLoc = Object.keys(locs).length > 0;
             const locInfo = hasLoc ? Object.keys(locs).join(',') : 'Baru';
             
-            // --- LOGIKA FILTER ---
-            // Jika Box dicentang DAN Barang punya lokasi -> SEMBUNYIKAN (Skip)
+            // LOGIKA FILTER
             if (filterActive && hasLoc) return;
 
             displayCount++;
             
             const tag = document.createElement('span');
             tag.className = 'multi-tag';
-            
-            // Visual: Merah jika belum ada box (Baru/Kosong), Ungu jika sudah ada
             const colorStyle = !hasLoc ? 'background:#fb923c; color:#fff;' : ''; 
             
             tag.style.cssText = colorStyle;
@@ -865,14 +857,9 @@
             container.prepend(tag);
         });
         
-        // Update Counter
         const counterEl = document.getElementById('multiCount');
         if(counterEl) counterEl.innerText = `${displayCount}/${multiBuffer.length}`;
     }
-    
-    // Update teks jumlah: (Yang Tampil / Total Buffer)
-    document.getElementById('multiCount').innerText = `${displayCount}/${multiBuffer.length}`;
-
 
     function createNewItem(code) {
         const item = {
@@ -1342,8 +1329,3 @@
 </script>
 </body>
 </html>
-
-
-
-
-
