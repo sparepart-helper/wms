@@ -243,9 +243,9 @@
                     <input type="checkbox" id="chkMultiScan" onchange="toggleMultiMode()"> Multi Scan
                 </label>
 
-                <label id="filterNoBoxToggle" style="display:none; align-items:center; gap:3px; color:#c2410c; font-weight:bold;">
-                    <input type="checkbox" id="chkFilterNoBox" onchange="renderMultiBuffer()"> Belum Box
-                </label>
+<label id="filterNoBoxToggle" style="display:none; align-items:center; gap:3px; color:#c2410c; font-weight:bold;">
+    <input type="checkbox" id="chkFilterNoBox" onchange="renderSimpanList(true)"> Belum Box
+</label>
 
                 <label style="display:flex; align-items:center; gap:3px;">
                     <input type="checkbox" id="chkManualType" onchange="toggleKeyboardMode()"> Ketik
@@ -925,13 +925,26 @@
     function renderSimpanList(reset = true) {
         if(reset) renderLimit = 50;
         const container = document.getElementById('simpanList');
+        // Ambil elemen checkbox filter
+        const filterNoBoxEl = document.getElementById('chkFilterNoBox');
+        
         if(reset) container.innerHTML = '';
         if(filteredItems.length === 0) return;
+
+        // Cek apakah filter aktif
+        const isFilterActive = filterNoBoxEl && filterNoBoxEl.checked;
 
         const show = filteredItems.slice(0, renderLimit);
         show.forEach(i => {
             const isActive = tempPart && tempPart.id === i.id;
+            const hasLoc = Object.keys(i.locations).length > 0;
             const locTags = Object.entries(i.locations).map(([k,v])=>`<span class="loc-badge">${k}</span>`).join('');
+            
+            // --- LOGIKA FILTER BARU ---
+            // Jika filter aktif (dicentang) DAN barang sudah punya lokasi (hasLoc = true)
+            // Maka: JANGAN TAMPILKAN (Skip)
+            if (isFilterActive && hasLoc) return;
+
             const div = document.createElement('div');
             div.className = `item-card ${isActive ? 'selected' : ''}`;
             div.id = `simpan-row-${i.id}`;
@@ -939,6 +952,11 @@
                 if(!isMultiScan) selectPartSimpan(i);
                 else addToMultiBuffer(i);
             };
+            
+            // Visual: Tambahkan border orange jika item ini belum ada lokasi (biar lebih jelas)
+            const styleBorder = (!hasLoc && isFilterActive) ? 'border-left: 5px solid #fb923c;' : '';
+
+            div.style.cssText = styleBorder;
             div.innerHTML = `
                 <div style="flex:1">
                     <span class="part-code">${i.partNo}</span>
@@ -1329,3 +1347,4 @@
 </script>
 </body>
 </html>
+
